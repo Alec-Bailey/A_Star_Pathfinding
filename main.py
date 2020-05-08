@@ -4,11 +4,18 @@ __email__ = "alecj.bailley@gmail.com"
 import pygame
 import random
 import math
+import time
 
 # Global resolution
 RESOLUTION = (600, 600)
-TERRAIN_CHANCE = 0.1
+TERRAIN_CHANCE = 0.3
 SCALE_FACTOR = 10
+PATH_MOVE_TIME = 0.08
+VERTICAL_LINES = 3
+VERTICAL_SIZE = 15
+HORIZONTAL_LINES = 3
+HORIZONTAL_SIZE = 15
+L_SHAPES = 3
 
 
 class PriorityQueue(object):
@@ -23,20 +30,6 @@ class PriorityQueue(object):
         return len(self.queue) == 0
 
     def enqueue(self, state_dict):
-        """ Items in the priority queue are dictionaries:
-             -  'state': the current state of the puzzle
-             -      'h': the heuristic value for this state
-             - 'parent': a reference to the item containing the parent state
-             -      'g': the number of moves to get from the initial state to
-                         this state, the "cost" of this state
-             -      'f': the total estimated cost of this state, g(n)+h(n)
-            For example, an item in the queue might look like this:
-             {'state':[1,2,3,4,5,6,7,8,0], 'parent':[1,2,3,4,5,6,7,0,8],
-              'h':0, 'g':14, 'f':14}
-            Please be careful to use these keys exactly so we can test your
-            queue, and so that the pop() method will work correctly.
-        """
-
         in_open = False
         # Iterate through all entries in queue and check if state already exists in queue
         for entry in self.queue:
@@ -84,21 +77,29 @@ def generate_board(resolution):
     # Create the board
     board = []
     for i in range(0, x):
-        row = []
-        for j in range(0, y):
-            if random.random() < TERRAIN_CHANCE:
-                row.append(1)
-            else:
-                row.append(0)
-        board.append(row)
+        board.append([0] * y)
+
+    # Create vertical lines on the board
+    for vert in range(0, VERTICAL_LINES):
+        # Randomly select a column to place the line in
+        col = random.randint(0, len(board[0]))
+        for i in range(0, VERTICAL_SIZE):
+            board[i][col] = 1
+
+    # Create horizontal lines on the board
+    for hor in range(0, HORIZONTAL_LINES):
+        # Randomly select a row the place the line in
+        row = random.randint(0, len(board))
+        for i in range(0, HORIZONTAL_SIZE):
+            board[row][i] = 1
 
     return board
 
 
 # Returns the euclidean distance between two points on the board
 def euclidean_distance(start: tuple, goal: tuple):
-    x1x2 = pow(start[0] - start[1], 2)
-    y1y2 = pow(goal[0] - goal[1], 2)
+    x1x2 = pow(start[0] - goal[0], 2)
+    y1y2 = pow(start[1] - goal[1], 2)
     return int(math.sqrt(x1x2 + y1y2))
 
 
@@ -106,7 +107,7 @@ def euclidean_distance(start: tuple, goal: tuple):
 def get_successors(board: list, position: tuple, goal: tuple):
     successors = []
     # Get all possible moves including diagonals
-    for i in range(-1,2):
+    for i in range(-1, 2):
         for j in range(-1, 2):
             # Exclude non-moves
             if not (i == 0 and j == 0):
@@ -126,7 +127,8 @@ def a_star_pathfind(board: list, start: tuple, goal: tuple):
     # Create the priority queue
     queue = PriorityQueue()
     # Put the initial state in the queue
-    state = {'state': start, 'parent' : None, 'h': euclidean_distance(start, goal), 'g': 0, 'f': euclidean_distance(start, goal)}
+    state = {'state': start, 'parent': None, 'h': euclidean_distance(start, goal),
+             'g': 0, 'f': euclidean_distance(start, goal)}
     queue.enqueue(state)
     # Create the solution and closed lists
     solution = []
@@ -155,7 +157,7 @@ def a_star_pathfind(board: list, start: tuple, goal: tuple):
             found_in_closed = False
 
             # Create the successor dictionary
-            succ_dict = {'state': succ, 'h': euclidean_distance(succ, goal), 'g': top['g'] + 1,
+            succ_dict = {'state': succ, 'parent': top, 'h': euclidean_distance(succ, goal), 'g': top['g'] + 1,
                          'f': top['g'] + 1 + euclidean_distance(succ, goal)}
 
             # Check if there are better states in the closed list
@@ -173,16 +175,21 @@ def a_star_pathfind(board: list, start: tuple, goal: tuple):
                 queue.enqueue(succ_dict)
 
         # Get the solutions in order
-        while top['parent'] is not None:
-            solution.append(top)
-            top = top.get('parent')
-        solution.append(top)
+    while top['parent'] is not None:
+        solution.append(top['state'])
+        top = top.get('parent')
+    solution.append(top['state'])
 
-        # Return the solution list
-        return solution
+    # Return the solution list, reversed to move in order First Move -> Last Move
+    solution.reverse()
+    return solution
+
 
 # Defines the main game loop
 def main():
+
+    start = (0, 0)
+    goal = (59, 59)
 
     # Initalize pygame
     pygame.init()
@@ -210,11 +217,14 @@ def main():
     goal_met = True
     # Main game loop
     while running:
-
+        board = generate_board(RESOLUTION)
         # If the goal has been met, generate a new board
         if goal_met:
             # Generate a board
             board = generate_board(RESOLUTION)
+
+            # Reset the background
+            screen.blit(background, (0, 0))
 
             # Place bricks in the appropriate locations
             for i in range(0, len(board)):
@@ -223,6 +233,16 @@ def main():
                         screen.blit(brick, (SCALE_FACTOR * i, SCALE_FACTOR * j))
             pygame.display.flip()
             goal_met = False
+        else:
+
+            # Calculate the path with A star
+            path = a_star_pathfind(board, start, goal)
+            for move in path:
+                # Display the player object in the path
+                screen.blit(player, (SCALE_FACTOR * move[0], SCALE_FACTOR * move[1]))
+                pygame.display.flip()
+                time.sleep(PATH_MOVE_TIME)
+                goal_met = True
 
         # Iterate over all events
         for event in pygame.event.get():
@@ -236,7 +256,6 @@ def main():
                 screen.blit(background, (0,0))
                 pygame.display.flip()
         pass
-
 
 # Prevent execution on imports
 if __name__ == "__main__":
