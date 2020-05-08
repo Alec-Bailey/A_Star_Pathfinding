@@ -8,7 +8,7 @@ import time
 
 # Global resolution
 RESOLUTION = (600, 600)
-TERRAIN_CHANCE = 0.3
+TERRAIN_CHANCE = 0.1
 SCALE_FACTOR = 10
 PATH_MOVE_TIME = 0.08
 VERTICAL_LINES = 3
@@ -92,6 +92,12 @@ def generate_board(resolution):
         row = random.randint(0, len(board))
         for i in range(0, HORIZONTAL_SIZE):
             board[row][i] = 1
+
+    # Add some random noise
+    for i in range(0, y):
+        for j in range(0, x):
+            if random.random() < TERRAIN_CHANCE:
+                board[i][j] = 1
 
     return board
 
@@ -181,7 +187,11 @@ def a_star_pathfind(board: list, start: tuple, goal: tuple):
     solution.append(top['state'])
 
     # Return the solution list, reversed to move in order First Move -> Last Move
+    for row in board:
+        print(row)
+    print('\n\n')
     solution.reverse()
+    print(solution, '\n')
     return solution
 
 
@@ -219,30 +229,33 @@ def main():
     while running:
         board = generate_board(RESOLUTION)
         # If the goal has been met, generate a new board
-        if goal_met:
-            # Generate a board
-            board = generate_board(RESOLUTION)
+        # Generate a board
+        #board = generate_board(RESOLUTION)
 
-            # Reset the background
-            screen.blit(background, (0, 0))
+        # Reset the background
+        screen.blit(background, (0, 0))
 
-            # Place bricks in the appropriate locations
-            for i in range(0, len(board)):
-                for j in range(0, len(board)):
-                    if board[i][j] == 1:
-                        screen.blit(brick, (SCALE_FACTOR * i, SCALE_FACTOR * j))
+        print('CUCK BOARD')
+        for row in board:
+            print(row)
+        print('CUCK BOARD')
+        # Place bricks in the appropriate locations
+        for i in range(0, len(board)):
+            for j in range(0, len(board)):
+                if board[i][j] == 1:
+                    screen.blit(brick, (SCALE_FACTOR * j, SCALE_FACTOR * i))
+                    #screen.blit(brick, (SCALE_FACTOR * 1, SCALE_FACTOR * 2))
+                    print('row', i, 'col', j)
+        pygame.display.flip()
+
+        # Calculate the path with A star
+        path = a_star_pathfind(board, start, goal)
+        for move in path:
+            # Display the player object in the path
+            screen.blit(player, (SCALE_FACTOR * move[1], SCALE_FACTOR * move[0]))
             pygame.display.flip()
-            goal_met = False
-        else:
-
-            # Calculate the path with A star
-            path = a_star_pathfind(board, start, goal)
-            for move in path:
-                # Display the player object in the path
-                screen.blit(player, (SCALE_FACTOR * move[0], SCALE_FACTOR * move[1]))
-                pygame.display.flip()
-                time.sleep(PATH_MOVE_TIME)
-                goal_met = True
+            time.sleep(PATH_MOVE_TIME)
+            goal_met = True
 
         # Iterate over all events
         for event in pygame.event.get():
