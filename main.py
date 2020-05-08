@@ -187,11 +187,7 @@ def a_star_pathfind(board: list, start: tuple, goal: tuple):
     solution.append(top['state'])
 
     # Return the solution list, reversed to move in order First Move -> Last Move
-    for row in board:
-        print(row)
-    print('\n\n')
     solution.reverse()
-    print(solution, '\n')
     return solution
 
 
@@ -235,17 +231,11 @@ def main():
         # Reset the background
         screen.blit(background, (0, 0))
 
-        print('CUCK BOARD')
-        for row in board:
-            print(row)
-        print('CUCK BOARD')
         # Place bricks in the appropriate locations
         for i in range(0, len(board)):
             for j in range(0, len(board)):
                 if board[i][j] == 1:
                     screen.blit(brick, (SCALE_FACTOR * j, SCALE_FACTOR * i))
-                    #screen.blit(brick, (SCALE_FACTOR * 1, SCALE_FACTOR * 2))
-                    print('row', i, 'col', j)
         pygame.display.flip()
 
         # Calculate the path with A star
